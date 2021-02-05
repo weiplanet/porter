@@ -119,21 +119,19 @@ export default class IntegrationList extends Component<PropsType, StateType> {
                   <Subtitle>{subtitle}</Subtitle>
                 </Description>
               </Flex>
-              <MaterialIconTray
+              <Spacer />
+              <i className="material-icons">more_vert</i>
+              <I
+                className="material-icons"
+                showList={this.state.displayImages[i]}
                 isCategory={isCategory}
                 disabled={false}
+                onClick={(e) => {
+                  this.toggleDisplay(e, i);
+                }}
               >
-                <i className="material-icons">more_vert</i>
-                <I
-                  className="material-icons"
-                  showList={this.state.displayImages[i]}
-                  onClick={(e) => {
-                    this.toggleDisplay(e, i);
-                  }}
-                >
-                  {isCategory ? 'launch' : 'expand_more'}
-                </I>
-              </MaterialIconTray>
+                {isCategory ? 'launch' : 'expand_more'}
+              </I>
             </MainRow>
             {this.state.displayImages[i] &&
               <ImageHodler
@@ -273,6 +271,15 @@ const MainRow = styled.div`
     > i {
       background: ${(props: { isCategory: boolean, disabled: boolean }) => props.disabled ? '' : '#ffffff11' };
     }
+    > span {
+      background: #26282f;
+    }
+  }
+
+  > span {
+    :hover {
+      background: ${(props: { isCategory: boolean, disabled: boolean }) => props.disabled ? '' : '#ffffff11'};
+    }
   }
 
   > i {
@@ -342,8 +349,14 @@ const StyledIntegrationList = styled.div`
   margin-top: 20px;
 `;
 
-const I = styled.i`
-  transform: ${(props: { showList: boolean }) => props.showList ? 'rotate(180deg)' : ''};
+const I = styled.span`
+  transform: ${(props: { showList: boolean, isCategory: boolean, disabled: boolean }) => props.showList ? 'rotate(180deg)' : ''};
+  margin-left: 16px;
+  border-radius: 20px;
+  font-size: 18px;
+  padding: 5px;
+  color: ${(props: { showList: boolean, isCategory: boolean, disabled: boolean }) => props.isCategory ? '#616feecc' : '#ffffff44'};
+  margin-right: -7px;
 `;
 
 const ControlRow = styled.div`
@@ -402,4 +415,8 @@ const Button = styled.div`
     margin-right: 5px;
     justify-content: center;
   }
+`;
+
+const Spacer = styled.div`
+  flex: 1;
 `;
