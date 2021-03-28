@@ -70,18 +70,33 @@ func (app *App) HandleListRepos(w http.ResponseWriter, r *http.Request) {
 
 	client := github.NewClient(app.GithubProjectConf.Client(oauth2.NoContext, tok))
 
-	// list all repositories for specified user
-	repos, _, err := client.Repositories.List(context.Background(), "", &github.RepositoryListOptions{
-		Sort: "updated",
-	})
+	allRepos := make([]*github.Repository, 0)
 
-	if err != nil {
-		app.handleErrorInternal(err, w)
-		return
+	opt := &github.RepositoryListOptions{
+		ListOptions: github.ListOptions{
+			PerPage: 100,
+		},
+		Sort: "updated",
 	}
 
-	// TODO -- check if repo has already been appended -- there may be duplicates
-	for _, repo := range repos {
+	for {
+		repos, resp, err := client.Repositories.List(context.Background(), "", opt)
+
+		if err != nil {
+			app.handleErrorInternal(err, w)
+			return
+		}
+
+		allRepos = append(allRepos, repos...)
+
+		if resp.NextPage == 0 {
+			break
+		}
+
+		opt.Page = resp.NextPage
+	}
+
+	for _, repo := range allRepos {
 		res = append(res, Repo{
 			FullName: repo.GetFullName(),
 			Kind:     "github",
@@ -89,6 +104,32 @@ func (app *App) HandleListRepos(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(res)
+}
+
+// HandleDeleteProjectGitRepo handles the deletion of a Github Repo via the git repo ID
+func (app *App) HandleDeleteProjectGitRepo(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseUint(chi.URLParam(r, "git_repo_id"), 0, 64)
+
+	if err != nil || id == 0 {
+		app.handleErrorFormDecoding(err, ErrProjectDecode, w)
+		return
+	}
+
+	repo, err := app.Repo.GitRepo.ReadGitRepo(uint(id))
+
+	if err != nil {
+		app.handleErrorRead(err, ErrProjectDataRead, w)
+		return
+	}
+
+	err = app.Repo.GitRepo.DeleteGitRepo(repo)
+
+	if err != nil {
+		app.handleErrorRead(err, ErrProjectDataRead, w)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 // HandleGetBranches retrieves a list of branch names for a specified repo
@@ -108,7 +149,6 @@ func (app *App) HandleGetBranches(w http.ResponseWriter, r *http.Request) {
 	// List all branches for a specified repo
 	branches, _, err := client.Repositories.ListBranches(context.Background(), owner, name, nil)
 	if err != nil {
-		fmt.Println(err)
 		return
 	}
 
@@ -159,7 +199,6 @@ func (app *App) HandleGetBranchContents(w http.ResponseWriter, r *http.Request) 
 
 	// Ret2: recursively traverse all dirs to create config bundle (case on type == dir)
 	// https://api.github.com/repos/porter-dev/porter/contents?ref=frontend-graph
-	// fmt.Println(res)
 	json.NewEncoder(w).Encode(res)
 }
 

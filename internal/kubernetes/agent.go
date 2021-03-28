@@ -28,6 +28,7 @@ import (
 	"github.com/porter-dev/porter/internal/helm/grapher"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
+	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	v1beta1 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -110,6 +111,24 @@ func (a *Agent) GetDaemonSet(c grapher.Object) (*appsv1.DaemonSet, error) {
 	)
 }
 
+// GetJob gets the job by name and namespace
+func (a *Agent) GetJob(c grapher.Object) (*batchv1.Job, error) {
+	return a.Clientset.BatchV1().Jobs(c.Namespace).Get(
+		context.TODO(),
+		c.Name,
+		metav1.GetOptions{},
+	)
+}
+
+// GetCronJob gets the CronJob by name and namespace
+func (a *Agent) GetCronJob(c grapher.Object) (*batchv1beta1.CronJob, error) {
+	return a.Clientset.BatchV1beta1().CronJobs(c.Namespace).Get(
+		context.TODO(),
+		c.Name,
+		metav1.GetOptions{},
+	)
+}
+
 // GetPodsByLabel retrieves pods with matching labels
 func (a *Agent) GetPodsByLabel(selector string) (*v1.PodList, error) {
 	// Search in all namespaces for matching pods
@@ -146,7 +165,6 @@ func (a *Agent) GetPodLogs(namespace string, name string, conn *websocket.Conn) 
 			if _, _, err := conn.ReadMessage(); err != nil {
 				defer conn.Close()
 				errorchan <- nil
-				fmt.Println("Successfully closed log stream")
 				return
 			}
 		}
@@ -230,7 +248,6 @@ func (a *Agent) StreamControllerStatus(conn *websocket.Conn, kind string) error 
 			if _, _, err := conn.ReadMessage(); err != nil {
 				defer conn.Close()
 				defer close(stopper)
-				defer fmt.Println("Successfully closed controller status stream")
 				errorchan <- nil
 				return
 			}

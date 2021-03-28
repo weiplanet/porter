@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -670,8 +669,6 @@ func (auth *Auth) isLoggedIn(w http.ResponseWriter, r *http.Request) bool {
 
 	tok := auth.getTokenFromRequest(r)
 
-	fmt.Println("CHECKED TOKEN FROM REQUEST", tok)
-
 	if tok != nil {
 		return true
 	}
@@ -680,7 +677,7 @@ func (auth *Auth) isLoggedIn(w http.ResponseWriter, r *http.Request) bool {
 	if err != nil {
 		session.Values["authenticated"] = false
 		if err := session.Save(r, w); err != nil {
-			fmt.Println("error while saving session in isLoggedIn", err)
+			return false
 		}
 		return false
 	}
@@ -704,7 +701,9 @@ func (auth *Auth) getTokenFromRequest(r *http.Request) *token.Token {
 
 	tok, err := token.GetTokenFromEncoded(reqToken, auth.tokenConf)
 
-	fmt.Printf("ERROR WAS %v\n", err)
+	if err != nil {
+		return nil
+	}
 
 	return tok
 }

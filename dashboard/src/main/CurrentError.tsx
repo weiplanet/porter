@@ -12,7 +12,7 @@ type StateType = {};
 
 export default class CurrentError extends Component<PropsType, StateType> {
   state = {
-    expanded: false,
+    expanded: false
   };
 
   componentDidUpdate(prevProps: PropsType) {
@@ -32,7 +32,7 @@ export default class CurrentError extends Component<PropsType, StateType> {
           <StyledCurrentError onClick={() => this.setState({ expanded: true })}>
             <ErrorText>Error: {this.props.currentError}</ErrorText>
             <CloseButton
-              onClick={(e) => {
+              onClick={e => {
                 this.context.setCurrentError(null);
                 e.stopPropagation();
               }}
@@ -94,7 +94,7 @@ const StyledCurrentError = styled.div`
   position: fixed;
   bottom: 22px;
   width: 300px;
-  left: 100px;
+  left: 20px;
   padding: 15px;
   padding-right: 0px;
   font-family: "Work Sans", sans-serif;

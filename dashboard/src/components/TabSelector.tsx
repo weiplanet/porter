@@ -12,6 +12,7 @@ type PropsType = {
   setCurrentTab: (value: string) => void;
   addendum?: any;
   color?: string;
+  noBuffer?: boolean;
 };
 
 type StateType = {};
@@ -45,7 +46,7 @@ export default class TabSelector extends Component<PropsType, StateType> {
         <TabWrapper>
           {this.renderTabList()}
           <Tab lastItem={true} highlight={null}>
-            <Buffer />
+            {this.props.noBuffer ? null : <Buffer />}
           </Tab>
         </TabWrapper>
         {this.props.addendum}
@@ -95,10 +96,10 @@ const Tab = styled.div`
 
 const StyledTabSelector = styled.div`
   display: flex;
-  width: calc(100% - 4px);
+  width: calc(100% - 2px);
   align-items: center;
   border-bottom: 1px solid #aaaabb55;
   padding-bottom: 1px;
-  margin-left: 2px;
+  margin-left: 1px;
   position: relative;
 `;

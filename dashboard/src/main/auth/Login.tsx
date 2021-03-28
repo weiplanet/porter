@@ -1,4 +1,4 @@
-import React, { ChangeEvent, Component, useContext } from "react";
+import React, { ChangeEvent, Component } from "react";
 import styled from "styled-components";
 import logo from "assets/logo.png";
 import github from "assets/github-icon.png";
@@ -14,55 +14,46 @@ type PropsType = {
 type StateType = {
   email: string;
   password: string;
-  confirmPassword: string;
   emailError: boolean;
-  confirmPasswordError: boolean;
+  credentialError: boolean;
 };
 
-export default class Register extends Component<PropsType, StateType> {
+export default class Login extends Component<PropsType, StateType> {
   state = {
     email: "",
     password: "",
-    confirmPassword: "",
     emailError: false,
-    confirmPasswordError: false,
+    credentialError: false,
   };
 
   handleKeyDown = (e: any) => {
-    e.key === "Enter" ? this.handleRegister() : null;
+    e.key === "Enter" ? this.handleLogin() : null;
   };
 
   componentDidMount() {
-    document.addEventListener("keydown", this.handleKeyDown);
+    let urlParams = new URLSearchParams(window.location.search);
+    let emailFromCLI = urlParams.get("email");
+    emailFromCLI
+      ? this.setState({ email: emailFromCLI })
+      : document.addEventListener("keydown", this.handleKeyDown);
   }
 
   componentWillUnmount() {
     document.removeEventListener("keydown", this.handleKeyDown);
   }
 
-  githubRedirect = () => {
-    let redirectUrl = `/api/oauth/login/github`;
-    window.location.href = redirectUrl;
-  };
-
-  handleRegister = (): void => {
-    let { email, password, confirmPassword } = this.state;
+  handleLogin = (): void => {
+    let { email, password } = this.state;
     let { authenticate } = this.props;
-    let { setCurrentError, setUser } = this.context;
-
-    if (!emailRegex.test(email)) {
-      this.setState({ emailError: true });
-    }
-
-    if (confirmPassword !== password) {
-      this.setState({ confirmPasswordError: true });
-    }
+    let { setUser } = this.context;
 
     // Check for valid input
-    if (emailRegex.test(email) && confirmPassword === password) {
-      // Attempt user registration
+    if (!emailRegex.test(email)) {
+      this.setState({ emailError: true });
+    } else {
+      // Attempt user login
       api
-        .registerUser(
+        .logInUser(
           "",
           {
             email: email,
@@ -70,7 +61,8 @@ export default class Register extends Component<PropsType, StateType> {
           },
           {}
         )
-        .then((res: any) => {
+        .then((res) => {
+          // TODO: case and set credential error
           if (res?.data?.redirect) {
             window.location.href = res.data.redirect;
           } else {
@@ -78,7 +70,9 @@ export default class Register extends Component<PropsType, StateType> {
             authenticate();
           }
         })
-        .catch((err) => setCurrentError(err.response.data.errors[0]));
+        .catch((err) =>
+          this.context.setCurrentError(err.response.data.errors[0])
+        );
     }
   };
 
@@ -94,40 +88,39 @@ export default class Register extends Component<PropsType, StateType> {
     }
   };
 
-  renderConfirmPasswordError = () => {
-    let { confirmPasswordError } = this.state;
-    if (confirmPasswordError) {
+  renderCredentialError = () => {
+    let { credentialError } = this.state;
+    if (credentialError) {
       return (
         <ErrorHelper>
           <div />
-          Passwords do not match
+          Incorrect email or password
         </ErrorHelper>
       );
     }
   };
 
+  githubRedirect = () => {
+    let redirectUrl = `/api/oauth/login/github`;
+    window.location.href = redirectUrl;
+  };
+
   render() {
-    let {
-      email,
-      password,
-      confirmPassword,
-      emailError,
-      confirmPasswordError,
-    } = this.state;
+    let { email, password, credentialError, emailError } = this.state;
 
     return (
-      <StyledRegister>
+      <StyledLogin>
         <LoginPanel>
           <OverflowWrapper>
             <GradientBg />
           </OverflowWrapper>
           <FormWrapper>
             <Logo src={logo} />
-            <Prompt>Sign up for Porter</Prompt>
+            <Prompt>Log in to Porter</Prompt>
             <OAuthButton onClick={this.githubRedirect}>
               <IconWrapper>
                 <Icon src={github} />
-                Sign up with GitHub
+                Log in with GitHub
               </IconWrapper>
             </OAuthButton>
             <OrWrapper>
@@ -141,53 +134,68 @@ export default class Register extends Component<PropsType, StateType> {
                 placeholder="Email"
                 value={email}
                 onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  this.setState({ email: e.target.value, emailError: false })
+                  this.setState({
+                    email: e.target.value,
+                    emailError: false,
+                    credentialError: false,
+                  })
                 }
-                valid={!emailError}
+                valid={!credentialError && !emailError}
               />
               {this.renderEmailError()}
             </InputWrapper>
-            <Input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                this.setState({
-                  password: e.target.value,
-                  confirmPasswordError: false,
-                })
-              }
-              valid={true}
-            />
             <InputWrapper>
               <Input
                 type="password"
-                placeholder="Confirm Password"
-                value={confirmPassword}
+                placeholder="Password"
+                value={password}
                 onChange={(e: ChangeEvent<HTMLInputElement>) =>
                   this.setState({
-                    confirmPassword: e.target.value,
-                    confirmPasswordError: false,
+                    password: e.target.value,
+                    credentialError: false,
                   })
                 }
-                valid={!confirmPasswordError}
+                valid={!credentialError}
               />
-              {this.renderConfirmPasswordError()}
+              {this.renderCredentialError()}
             </InputWrapper>
-            <Button onClick={this.handleRegister}>Continue</Button>
+            <Button onClick={this.handleLogin}>Continue</Button>
 
             <Helper>
-              Have an account?
-              <Link href="/login">Sign in</Link>
+              <Link href="/register">Sign up</Link> |
+              <Link href="/password/reset">Forgot password?</Link>
             </Helper>
           </FormWrapper>
         </LoginPanel>
-      </StyledRegister>
+
+        <Footer>
+          © 2021 Porter Technologies Inc. •
+          <Link
+            href="https://docs.getporter.dev/docs/terms-of-service"
+            target="_blank"
+          >
+            Terms & Privacy
+          </Link>
+        </Footer>
+      </StyledLogin>
     );
   }
 }
 
-Register.contextType = Context;
+Login.contextType = Context;
+
+const Footer = styled.div`
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  margin-bottom: 30px;
+  width: 100vw;
+  text-align: center;
+  color: #aaaabb;
+  font-size: 13px;
+  padding-right: 8px;
+  font: Work Sans, sans-serif;
+`;
 
 const DarkMatter = styled.div`
   margin-top: -10px;
@@ -266,10 +274,6 @@ const OverflowWrapper = styled.div`
   border-radius: 10px;
 `;
 
-const InputWrapper = styled.div`
-  position: relative;
-`;
-
 const ErrorHelper = styled.div`
   position: absolute;
   right: -185px;
@@ -299,15 +303,16 @@ const ErrorHelper = styled.div`
 `;
 
 const Line = styled.div`
-  height: 3px;
+  min-height: 3px;
   width: 100px;
+  z-index: 999;
   background: #ffffff22;
-  margin: 35px 0px 30px;
+  margin: 30px 0px 30px;
 `;
 
 const Button = styled.button`
   width: 200px;
-  height: 30px;
+  min-height: 30px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -320,6 +325,10 @@ const Button = styled.button`
   color: white;
   font-weight: 500;
   font-size: 14px;
+`;
+
+const InputWrapper = styled.div`
+  position: relative;
 `;
 
 const Input = styled.input`
@@ -346,7 +355,7 @@ const Prompt = styled.div`
 const Logo = styled.img`
   width: 140px;
   margin-top: 50px;
-  margin-bottom: 35px;
+  margin-bottom: 45px;
   user-select: none;
 `;
 
@@ -381,7 +390,7 @@ const GradientBg = styled.div`
 
 const LoginPanel = styled.div`
   width: 330px;
-  height: 500px;
+  height: 470px;
   background: white;
   margin-top: -20px;
   border-radius: 10px;
@@ -391,7 +400,7 @@ const LoginPanel = styled.div`
   align-items: center;
 `;
 
-const StyledRegister = styled.div`
+const StyledLogin = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;

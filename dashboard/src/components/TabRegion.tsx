@@ -27,7 +27,7 @@ export default class TabRegion extends Component<PropsType, StateType> {
   componentDidUpdate(prevProps: PropsType) {
     let { options, currentTab } = this.props;
     if (prevProps.options !== options) {
-      if (options.filter((x) => x.value === currentTab).length === 0) {
+      if (options.filter(x => x.value === currentTab).length === 0) {
         this.props.setCurrentTab(this.defaultTab());
       }
     }
@@ -77,7 +77,7 @@ const Div = styled.div`
 `;
 
 const TabContents = styled.div`
-  height: calc(100% - 60px);
+  height: calc(100% - 65px);
 `;
 
 const Gap = styled.div`

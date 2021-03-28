@@ -9,6 +9,7 @@ type PropsType = {
   controller: any;
   selectedPod: any;
   selectPod: Function;
+  selectors: any;
   isLast?: boolean;
   isFirst?: boolean;
   setPodError: (x: string) => void;
@@ -46,6 +47,10 @@ export default class ControllerTab extends Component<PropsType, StateType> {
     }
     selectors.push(selector);
 
+    if (controller.kind.toLowerCase() == "job" && this.props.selectors) {
+      selectors = this.props.selectors;
+    }
+
     api
       .getMatchingPods(
         "<token>",
@@ -73,6 +78,11 @@ export default class ControllerTab extends Component<PropsType, StateType> {
         this.setState({ pods, raw: res.data, showTooltip });
 
         if (isFirst) {
+          let pod = res.data[0];
+          let status = this.getPodStatus(pod.status);
+          status === "failed" &&
+            pod.status?.message &&
+            this.props.setPodError(pod.status?.message);
           selectPod(res.data[0]);
         }
       })
@@ -100,15 +110,20 @@ export default class ControllerTab extends Component<PropsType, StateType> {
           c.status?.numberAvailable || 0,
           c.status?.desiredNumberScheduled || 0,
         ];
+      case "job":
+        console.log(c);
+        return [1, 1];
     }
   };
 
   getPodStatus = (status: any) => {
-    if (status?.phase === "Pending" && status?.containerStatuses !== undefined) {
+    if (
+      status?.phase === "Pending" &&
+      status?.containerStatuses !== undefined
+    ) {
       return status.containerStatuses[0].state.waiting.reason;
-      // return 'waiting'
     } else if (status?.phase === "Pending") {
-      return "Pending"
+      return "Pending";
     }
 
     if (status?.phase === "Failed") {
@@ -139,10 +154,16 @@ export default class ControllerTab extends Component<PropsType, StateType> {
     let { controller, selectedPod, isLast, selectPod, isFirst } = this.props;
     let [available, total] = this.getAvailability(controller.kind, controller);
     let status = available == total ? "running" : "waiting";
+
+    if (controller.kind.toLowerCase() === "job" && this.state.raw.length == 0) {
+      status = "completed";
+    }
+
     return (
       <ResourceTab
         label={controller.kind}
-        name={controller.metadata.name}
+        // handle CronJob case
+        name={controller.metadata?.name || controller.name}
         status={{ label: status, available, total }}
         isLast={isLast}
         expanded={isFirst}
@@ -155,7 +176,9 @@ export default class ControllerTab extends Component<PropsType, StateType> {
               selected={selectedPod?.metadata?.name === pod?.metadata?.name}
               onClick={() => {
                 this.props.setPodError("");
-                (status === "failed" && pod.status?.message) && this.props.setPodError(pod.status?.message);
+                status === "failed" &&
+                  pod.status?.message &&
+                  this.props.setPodError(pod.status?.message);
                 selectPod(pod);
               }}
             >
@@ -250,6 +273,8 @@ const StatusColor = styled.div`
       ? "#4797ff"
       : props.status === "failed"
       ? "#ed5f85"
+      : props.status === "completed"
+      ? "#00d12a"
       : "#f5cb42"};
   border-radius: 20px;
 `;

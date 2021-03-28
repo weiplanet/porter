@@ -67,6 +67,8 @@ export default class StatusIndicator extends Component<PropsType, StateType> {
         return c.status.readyReplicas == c.status.replicas;
       case "daemonset":
         return c.status.numberAvailable == c.status.desiredNumberScheduled;
+      case "cronjob":
+        return 1;
     }
   };
 
@@ -97,6 +99,8 @@ const StatusColor = styled.div`
       ? "#4797ff"
       : props.status === "failed"
       ? "#ed5f85"
+      : props.status === "completed"
+      ? "#00d12a"
       : "#f5cb42"};
   border-radius: 20px;
   margin-right: 16px;

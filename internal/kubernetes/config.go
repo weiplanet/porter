@@ -2,6 +2,7 @@ package kubernetes
 
 import (
 	"errors"
+	"fmt"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -88,8 +89,9 @@ func GetAgentTesting(objects ...runtime.Object) *Agent {
 // OutOfClusterConfig is the set of parameters required for an out-of-cluster connection.
 // This implements RESTClientGetter
 type OutOfClusterConfig struct {
-	Cluster *models.Cluster
-	Repo    *repository.Repository
+	Cluster          *models.Cluster
+	Repo             *repository.Repository
+	DefaultNamespace string // optional
 
 	// Only required if using DigitalOcean OAuth as an auth mechanism
 	DigitalOceanOAuth *oauth2.Config
@@ -99,7 +101,13 @@ type OutOfClusterConfig struct {
 // the result of ToRawKubeConfigLoader, and also adds a custom http transport layer
 // if necessary (required for GCP auth)
 func (conf *OutOfClusterConfig) ToRESTConfig() (*rest.Config, error) {
-	restConf, err := conf.ToRawKubeConfigLoader().ClientConfig()
+	cmdConf, err := conf.GetClientConfigFromCluster()
+
+	if err != nil {
+		return nil, err
+	}
+
+	restConf, err := cmdConf.ClientConfig()
 
 	if err != nil {
 		return nil, err
@@ -157,11 +165,13 @@ func (conf *OutOfClusterConfig) ToRESTMapper() (meta.RESTMapper, error) {
 // GetClientConfigFromCluster will construct new clientcmd.ClientConfig using
 // the configuration saved within a Cluster model
 func (conf *OutOfClusterConfig) GetClientConfigFromCluster() (clientcmd.ClientConfig, error) {
-	cluster := conf.Cluster
+	if conf.Cluster == nil {
+		return nil, fmt.Errorf("cluster cannot be nil")
+	}
 
-	if cluster.AuthMechanism == models.Local {
+	if conf.Cluster.AuthMechanism == models.Local {
 		kubeAuth, err := conf.Repo.KubeIntegration.ReadKubeIntegration(
-			cluster.KubeIntegrationID,
+			conf.Cluster.KubeIntegrationID,
 		)
 
 		if err != nil {
@@ -177,7 +187,15 @@ func (conf *OutOfClusterConfig) GetClientConfigFromCluster() (clientcmd.ClientCo
 		return nil, err
 	}
 
-	config := clientcmd.NewDefaultClientConfig(*apiConfig, &clientcmd.ConfigOverrides{})
+	overrides := &clientcmd.ConfigOverrides{}
+
+	if conf.DefaultNamespace != "" {
+		overrides.Context = api.Context{
+			Namespace: conf.DefaultNamespace,
+		}
+	}
+
+	config := clientcmd.NewDefaultClientConfig(*apiConfig, overrides)
 
 	return config, nil
 }

@@ -14,6 +14,7 @@ type PropsType = {
   selectedTag: string | null;
   clickedImage: ImageType | null;
   registry?: any;
+  noTagSelection?: boolean;
   setSelectedImageUrl: (x: string) => void;
   setSelectedTag: (x: string) => void;
   setClickedImage: (x: ImageType) => void;
@@ -25,17 +26,19 @@ type StateType = {
   images: ImageType[];
 };
 
-export default class ImageSelector extends Component<PropsType, StateType> {
+export default class ImageList extends Component<PropsType, StateType> {
   state = {
     loading: true,
     error: false,
     images: [] as ImageType[],
   };
 
+  // TODO: Try to unhook before unmount
   componentDidMount() {
     const { currentProject, setCurrentError } = this.context;
     let images = [] as ImageType[];
     let errors = [] as number[];
+
     if (!this.props.registry) {
       api
         .getProjectRegistries("<token>", {}, { id: currentProject.id })
@@ -97,7 +100,12 @@ export default class ImageSelector extends Component<PropsType, StateType> {
                         loading: false,
                         error,
                       });
+                    } else {
+                      this.setState({
+                        images,
+                      });
                     }
+
                     resolveToNextController();
                   });
               }
@@ -161,6 +169,7 @@ export default class ImageSelector extends Component<PropsType, StateType> {
   */
   renderImageList = () => {
     let { images, loading, error } = this.state;
+
     if (loading) {
       return (
         <LoadingWrapper>
@@ -216,7 +225,8 @@ export default class ImageSelector extends Component<PropsType, StateType> {
 
   renderExpanded = () => {
     let { selectedTag, selectedImageUrl, setSelectedTag } = this.props;
-    if (!this.props.clickedImage) {
+
+    if (!this.props.clickedImage || this.props.noTagSelection) {
       return (
         <div>
           <ExpandedWrapper>{this.renderImageList()}</ExpandedWrapper>
@@ -245,13 +255,15 @@ export default class ImageSelector extends Component<PropsType, StateType> {
   }
 }
 
-ImageSelector.contextType = Context;
+ImageList.contextType = Context;
 
 const BackButton = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 10px;
+  margin-top: 28px;
+  margin-bottom: -6px;
+  height: 35px;
   cursor: pointer;
   font-size: 13px;
   padding: 5px 13px;

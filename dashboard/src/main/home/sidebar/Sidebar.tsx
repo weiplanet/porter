@@ -2,8 +2,9 @@ import React, { Component } from "react";
 import styled from "styled-components";
 import category from "assets/category.svg";
 import integrations from "assets/integrations.svg";
-import filter from "assets/filter.svg";
+import rocket from "assets/rocket.png";
 import settings from "assets/settings.svg";
+import discordLogo from "assets/discord.svg";
 
 import { Context } from "shared/Context";
 
@@ -102,7 +103,7 @@ class Sidebar extends Component<PropsType, StateType> {
           <NavButton
             onClick={() =>
               currentView !== "provisioner" &&
-              this.props.history.push("dashboard?tab=overview")
+              this.props.history.push("/dashboard?tab=overview")
             }
             selected={
               currentView === "dashboard" || currentView === "provisioner"
@@ -112,22 +113,20 @@ class Sidebar extends Component<PropsType, StateType> {
             Dashboard
           </NavButton>
           <NavButton
-            onClick={() => this.props.history.push("launch")}
+            onClick={() => this.props.history.push("/launch")}
             selected={currentView === "launch"}
           >
-            <Img src={filter} />
+            <Img src={rocket} />
             Launch
           </NavButton>
           <NavButton
             selected={currentView === "integrations"}
-            /* 
             onClick={() => {
-              setCurrentView('integrations')
+              this.props.history.push("/integrations");
             }}
-            */
-            onClick={() => {
-              setCurrentModal("IntegrationsInstructionsModal", {});
-            }}
+            // onClick={() => {
+            //   setCurrentModal("IntegrationsInstructionsModal", {});
+            // }}
           >
             <Img src={integrations} />
             Integrations
@@ -136,7 +135,7 @@ class Sidebar extends Component<PropsType, StateType> {
             return obj.user_id === this.context.user.userId;
           })[0].kind === "admin" && (
             <NavButton
-              onClick={() => this.props.history.push("project-settings")}
+              onClick={() => this.props.history.push("/project-settings")}
               selected={this.props.currentView === "project-settings"}
             >
               <Img enlarge={true} src={settings} />
@@ -189,6 +188,11 @@ class Sidebar extends Component<PropsType, StateType> {
           <br />
 
           {this.renderProjectContents()}
+
+          <DiscordButton href="https://discord.gg/34n7NN7FJ7" target="_blank">
+            <Icon src={discordLogo} />
+            Join Our Discord
+          </DiscordButton>
         </StyledSidebar>
       </>
     );
@@ -198,6 +202,14 @@ class Sidebar extends Component<PropsType, StateType> {
 Sidebar.contextType = Context;
 
 export default withRouter(Sidebar);
+
+const Icon = styled.img`
+  height: 25px;
+  width: 25px;
+  opacity: 30%;
+  margin-left: 7px;
+  margin-right: 5px;
+`;
 
 const ProjectPlaceholder = styled.div`
   background: #ffffff11;
@@ -267,6 +279,31 @@ const BottomSection = styled.div`
   position: absolute;
   width: 100%;
   bottom: 10px;
+`;
+
+const DiscordButton = styled.a`
+  position: absolute;
+  text-decoration: none;
+  bottom: 17px;
+  display: flex;
+  align-items: center;
+  width: calc(100% - 30px);
+  left: 15px;
+  border: 2px solid #ffffff44;
+  border-radius: 3px;
+  color: #ffffff44;
+  height: 40px;
+  font-family: Work Sans, sans-serif;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  :hover {
+    > img {
+      opacity: 60%;
+    }
+    color: #ffffff88;
+    border-color: #ffffff88;
+  }
 `;
 
 const LogOutButton = styled(NavButton)`

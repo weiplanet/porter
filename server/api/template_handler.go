@@ -18,7 +18,21 @@ import (
 // TODO: test and reduce fragility (handle untar/parse error for individual charts)
 // TODO: separate markdown retrieval into its own query if necessary
 func (app *App) HandleListTemplates(w http.ResponseWriter, r *http.Request) {
-	repoIndex, err := loader.LoadRepoIndexPublic(app.ServerConf.DefaultHelmRepoURL)
+
+	vals, err := url.ParseQuery(r.URL.RawQuery)
+
+	if err != nil {
+		app.handleErrorFormDecoding(err, ErrReleaseDecode, w)
+		return
+	}
+
+	repoURL := app.ServerConf.DefaultHelmRepoURL
+
+	if inputRepoURL, ok := vals["repo_url"]; ok && len(inputRepoURL) == 1 {
+		repoURL = inputRepoURL[0]
+	}
+
+	repoIndex, err := loader.LoadRepoIndexPublic(repoURL)
 
 	if err != nil {
 		app.handleErrorFormDecoding(err, ErrReleaseDecode, w)

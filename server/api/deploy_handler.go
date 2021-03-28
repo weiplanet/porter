@@ -138,6 +138,27 @@ func (app *App) HandleDeployTemplate(w http.ResponseWriter, r *http.Request) {
 		}, w)
 	}
 
+	// if github action config is linked, call the github action config handler
+	if form.GithubActionConfig != nil {
+		gaForm := &forms.CreateGitAction{
+			ReleaseID:      release.ID,
+			GitRepo:        form.GithubActionConfig.GitRepo,
+			ImageRepoURI:   form.GithubActionConfig.ImageRepoURI,
+			DockerfilePath: form.GithubActionConfig.DockerfilePath,
+			GitRepoID:      form.GithubActionConfig.GitRepoID,
+			BuildEnv:       form.GithubActionConfig.BuildEnv,
+			RegistryID:     form.GithubActionConfig.RegistryID,
+		}
+
+		// validate the form
+		if err := app.validator.Struct(form); err != nil {
+			app.handleErrorFormValidation(err, ErrProjectValidateFields, w)
+			return
+		}
+
+		app.createGitActionFromForm(projID, release, name, gaForm, w, r)
+	}
+
 	w.WriteHeader(http.StatusOK)
 }
 

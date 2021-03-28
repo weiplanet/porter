@@ -62,7 +62,10 @@ type GitActionConfig struct {
 	GitRepoID uint `json:"git_repo_id"`
 
 	// The path to the dockerfile in the git repo
-	DockerfilePath string `json:"dockerfile_path" form:"required"`
+	DockerfilePath string `json:"dockerfile_path"`
+
+	// The build context
+	FolderPath string `json:"folder_path"`
 }
 
 // GitActionConfigExternal is an external GitActionConfig to be shared over REST
@@ -78,6 +81,9 @@ type GitActionConfigExternal struct {
 
 	// The path to the dockerfile in the git repo
 	DockerfilePath string `json:"dockerfile_path" form:"required"`
+
+	// The build context
+	FolderPath string `json:"folder_path"`
 }
 
 // Externalize generates an external GitActionConfig to be shared over REST
@@ -87,5 +93,6 @@ func (r *GitActionConfig) Externalize() *GitActionConfigExternal {
 		ImageRepoURI:   r.ImageRepoURI,
 		GitRepoID:      r.GitRepoID,
 		DockerfilePath: r.DockerfilePath,
+		FolderPath:     r.FolderPath,
 	}
 }

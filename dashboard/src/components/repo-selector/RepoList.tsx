@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import styled from "styled-components";
 import github from "assets/github.png";
+import info from "assets/info.svg";
 
 import api from "shared/api";
 import { RepoType, ActionConfigType } from "shared/types";
@@ -19,15 +20,18 @@ type StateType = {
   repos: RepoType[];
   loading: boolean;
   error: boolean;
+  searchFilter: string;
 };
 
-export default class ActionConfEditor extends Component<PropsType, StateType> {
+export default class RepoList extends Component<PropsType, StateType> {
   state = {
     repos: [] as RepoType[],
     loading: true,
     error: false,
+    searchFilter: "",
   };
 
+  // TODO: Try to unhook before unmount
   componentDidMount() {
     let { currentProject } = this.context;
 
@@ -35,40 +39,75 @@ export default class ActionConfEditor extends Component<PropsType, StateType> {
     if (!this.props.userId && this.props.userId !== 0) {
       api
         .getGitRepos("<token>", {}, { project_id: currentProject.id })
-        .then((res) => {
+        .then(async (res) => {
+          if (res.data.length == 0) {
+            this.setState({ loading: false, error: false });
+            return
+          }
+
           var allRepos: any = [];
-          // TODO: make into promise.all
-          for (let i = 0; i < res.data.length; i++) {
-            var grid = res.data[i].id;
-            api
-              .getGitRepoList(
-                "<token>",
-                {},
-                { project_id: currentProject.id, git_repo_id: grid }
-              )
-              .then((res) => {
-                res.data.forEach((repo: any, id: number) => {
-                  repo.GHRepoID = grid;
-                });
-                allRepos = allRepos.concat(res.data);
-                this.setState({
-                  repos: allRepos,
-                  loading: false,
-                  error: false,
+          var errors : any = [];
+
+          var promises = res.data.map((gitrepo: any, id: number) => {
+            return new Promise((resolve, reject) => {
+              api
+                .getGitRepoList(
+                  "<token>",
+                  {},
+                  { project_id: currentProject.id, git_repo_id: gitrepo.id }
+                )
+                .then((res) => {
+                  res.data.forEach((repo: any, id: number) => {
+                    repo.GHRepoID = gitrepo.id;
+                  });
+
+                  resolve(res.data)
+                })
+                .catch((err) => {
+                  errors.push(err)
+                  resolve([])
                 });
               })
-              .catch((err) => {
-                console.log(err);
-                this.setState({ loading: false, error: true });
-              });
-          }
-          if (res.data.length < 1) {
-            this.setState({ loading: false, error: false });
+            })  
+
+          var sepRepos = await Promise.all(promises);
+
+          allRepos = [].concat.apply([], sepRepos);
+
+          // remove duplicates based on name
+          allRepos = allRepos.filter((repo : any, index : number, self : any) => {
+            var keep = index === self.findIndex((_repo : any) => {
+              return repo.FullName === _repo.FullName
+            })
+
+            return keep
+          })
+
+          // sort repos based on name
+          allRepos.sort((a: any, b: any) => {
+            if (a.FullName < b.FullName) {
+              return -1;
+            } else if (a.FullName > b.FullName) {
+              return 1;
+            } else {
+              return 0;
+            }
+          });
+
+          if (allRepos.length == 0 && errors.length > 0) {
+            this.setState({ loading: false, error: true });
+          } else {
+            this.setState({
+              repos: allRepos,
+              loading: false,
+              error: false,
+            });
           }
         })
-        .catch((err) => this.setState({ loading: false, error: true }));
+        .catch((_) => this.setState({ loading: false, error: true }));
     } else {
       let grid = this.props.userId;
+
       api
         .getGitRepoList(
           "<token>",
@@ -76,13 +115,25 @@ export default class ActionConfEditor extends Component<PropsType, StateType> {
           { project_id: currentProject.id, git_repo_id: grid }
         )
         .then((res) => {
-          res.data.forEach((repo: any, id: number) => {
+          var repos : any = res.data
+
+          repos.forEach((repo: any, id: number) => {
             repo.GHRepoID = grid;
           });
-          this.setState({ repos: res.data, loading: false, error: false });
+
+          repos.sort((a: any, b: any) => {
+            if (a.FullName < b.FullName) {
+              return -1;
+            } else if (a.FullName > b.FullName) {
+              return 1;
+            } else {
+              return 0;
+            }
+          });
+
+          this.setState({ repos: repos, loading: false, error: false });
         })
         .catch((err) => {
-          console.log(err);
           this.setState({ loading: false, error: true });
         });
     }
@@ -107,10 +158,22 @@ export default class ActionConfEditor extends Component<PropsType, StateType> {
     } else if (error || !repos) {
       return <LoadingWrapper>Error loading repos.</LoadingWrapper>;
     } else if (repos.length == 0) {
-      return <LoadingWrapper>No connected repos found.</LoadingWrapper>;
+      return (
+        <LoadingWrapper>
+          No connected Github repos found. You can
+          <A
+            href={`/api/oauth/projects/${this.context.currentProject.id}/github?redirected=true`}
+          >
+            log in with GitHub
+          </A>
+          .
+        </LoadingWrapper>
+      );
     }
 
-    return repos.map((repo: RepoType, i: number) => {
+    return repos.filter((repo: RepoType, i: number) => {
+      return repo.FullName.includes(this.state.searchFilter || "")
+    }).map((repo: RepoType, i: number) => {
       return (
         <RepoName
           key={i}
@@ -128,9 +191,29 @@ export default class ActionConfEditor extends Component<PropsType, StateType> {
 
   renderExpanded = () => {
     if (this.props.readOnly) {
-      return <ExpandedWrapperAlt>{this.renderRepoList()}</ExpandedWrapperAlt>;
+      return <ExpandedWrapperAlt>{this.renderRepoList()}</ExpandedWrapperAlt>
     } else {
-      return <ExpandedWrapper>{this.renderRepoList()}</ExpandedWrapper>;
+      return (
+        <ExpandedWrapper>
+          <InfoRow
+            isSelected={false}
+            lastItem={false}
+            readOnly={this.props.readOnly}
+          >
+            <i className="material-icons">search</i>
+            <SearchInput 
+              value={this.state.searchFilter}
+              onChange={(e: any) => {
+                this.setState({ searchFilter: e.target.value });
+              }}
+              placeholder="Search repos..."
+            />
+          </InfoRow>
+          <ExpandedWrapper>
+            {this.renderRepoList()}
+          </ExpandedWrapper>
+        </ExpandedWrapper>
+      );
     }
   };
 
@@ -139,7 +222,7 @@ export default class ActionConfEditor extends Component<PropsType, StateType> {
   }
 }
 
-ActionConfEditor.contextType = Context;
+RepoList.contextType = Context;
 
 const RepoName = styled.div`
   display: flex;
@@ -175,11 +258,24 @@ const RepoName = styled.div`
     }
   }
 
-  > img {
+  > img,i {
     width: 18px;
     height: 18px;
     margin-left: 12px;
     margin-right: 12px;
+    font-size: 20px;
+  }
+`;
+
+const InfoRow = styled(RepoName)`
+  cursor: default;
+  color: #ffffff55;
+  :hover {
+    background: #ffffff11;
+
+    > i {
+      background: none;
+    }
   }
 `;
 
@@ -197,11 +293,38 @@ const ExpandedWrapper = styled.div`
   width: 100%;
   border-radius: 3px;
   border: 0px solid #ffffff44;
-  max-height: 275px;
+  max-height: 235px;
+  top: 40px; 
+
+  > i {
+    font-size: 18px;
+    display: block;
+    position: absolute; 
+    left: 10px; 
+    top: 10px; 
+  }
 `;
 
 const ExpandedWrapperAlt = styled(ExpandedWrapper)`
   border: 1px solid #ffffff44;
   max-height: 275px;
   overflow-y: auto;
+`;
+
+const A = styled.a`
+  color: #8590ff;
+  text-decoration: underline;
+  margin-left: 5px;
+  cursor: pointer;
+`;
+
+const SearchInput = styled.input`
+  outline: none;
+  border: none;
+  font-size: 13px;
+  background: none;
+  width: 100%;
+  color: white;
+  padding: 0;
+  height: 20px; 
 `;

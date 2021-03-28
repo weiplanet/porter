@@ -5,7 +5,7 @@ type PropsType = {
   label?: string;
   type: string;
   value: string | number;
-  setValue: (x: string | number) => void;
+  setValue?: (x: string | number) => void;
   unit?: string;
   placeholder?: string;
   width?: string;
@@ -96,5 +96,5 @@ const Label = styled.div`
 
 const StyledInputRow = styled.div`
   margin-bottom: 15px;
-  margin-top: 20px;
+  margin-top: 22px;
 `;

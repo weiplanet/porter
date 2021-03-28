@@ -45,6 +45,8 @@ func main() {
 		&models.GitActionConfig{},
 		&models.Invite{},
 		&models.AuthCode{},
+		&models.DNSRecord{},
+		&models.PWResetToken{},
 		&ints.KubeIntegration{},
 		&ints.BasicIntegration{},
 		&ints.OIDCIntegration{},
@@ -77,6 +79,8 @@ func main() {
 }
 
 type RotateConf struct {
+	// we add a dummy field to avoid empty struct issue with envdecode
+	DummyField       string `env:"ASDF,default=asdf"`
 	OldEncryptionKey string `env:"OLD_ENCRYPTION_KEY"`
 	NewEncryptionKey string `env:"NEW_ENCRYPTION_KEY"`
 }

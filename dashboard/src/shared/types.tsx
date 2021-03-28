@@ -66,7 +66,7 @@ export interface EdgeType {
 export enum StorageType {
   Secret = "secret",
   ConfigMap = "configmap",
-  Memory = "memory",
+  Memory = "memory"
 }
 
 // PorterTemplate represents a bundled Porter template
@@ -82,6 +82,7 @@ export interface FormYAML {
   name?: string;
   icon?: string;
   description?: string;
+  hasSource?: string;
   tags?: string[];
   tabs?: {
     name: string;
@@ -164,5 +165,4 @@ export interface ActionConfigType {
   git_repo: string;
   image_repo_uri: string;
   git_repo_id: number;
-  dockerfile_path: string;
 }

@@ -1,112 +1,70 @@
 import React, { ChangeEvent, Component } from "react";
 import styled from "styled-components";
 import logo from "assets/logo.png";
-import github from "assets/github-icon.png";
 
 import api from "shared/api";
 import { emailRegex } from "shared/regex";
 import { Context } from "shared/Context";
 
 type PropsType = {
-  authenticate: () => void;
+  handleLogout: () => void;
 };
 
 type StateType = {
-  email: string;
-  password: string;
-  emailError: boolean;
-  credentialError: boolean;
+  submitted: boolean;
 };
 
-export default class Login extends Component<PropsType, StateType> {
+export default class VerifyEmail extends Component<PropsType, StateType> {
   state = {
-    email: "",
-    password: "",
-    emailError: false,
-    credentialError: false,
+    submitted: false,
   };
 
-  handleKeyDown = (e: any) => {
-    e.key === "Enter" ? this.handleLogin() : null;
-  };
-
-  componentDidMount() {
-    let urlParams = new URLSearchParams(window.location.search);
-    let emailFromCLI = urlParams.get("email");
-    emailFromCLI
-      ? this.setState({ email: emailFromCLI })
-      : document.addEventListener("keydown", this.handleKeyDown);
-  }
-
-  componentWillUnmount() {
-    document.removeEventListener("keydown", this.handleKeyDown);
-  }
-
-  handleLogin = (): void => {
-    let { email, password } = this.state;
-    let { authenticate } = this.props;
-    let { setUser } = this.context;
-
-    // Check for valid input
-    if (!emailRegex.test(email)) {
-      this.setState({ emailError: true });
-    } else {
-      // Attempt user login
-      api
-        .logInUser(
-          "",
-          {
-            email: email,
-            password: password,
-          },
-          {}
-        )
-        .then((res) => {
-          // TODO: case and set credential error
-          if (res?.data?.redirect) {
-            window.location.href = res.data.redirect;
-          } else {
-            setUser(res?.data?.id, res?.data?.email);
-            authenticate();
-          }
-        })
-        .catch((err) =>
-          this.context.setCurrentError(err.response.data.errors[0])
-        );
-    }
-  };
-
-  renderEmailError = () => {
-    let { emailError } = this.state;
-    if (emailError) {
-      return (
-        <ErrorHelper>
-          <div />
-          Please enter a valid email
-        </ErrorHelper>
+  handleSendEmail = (): void => {
+    api
+      .createEmailVerification("", {}, {})
+      .then((res) => {
+        this.setState({ submitted: true });
+      })
+      .catch((err) =>
+        this.context.setCurrentError(err.response.data.errors[0])
       );
-    }
-  };
-
-  renderCredentialError = () => {
-    let { credentialError } = this.state;
-    if (credentialError) {
-      return (
-        <ErrorHelper>
-          <div />
-          Incorrect email or password
-        </ErrorHelper>
-      );
-    }
-  };
-
-  githubRedirect = () => {
-    let redirectUrl = `/api/oauth/login/github`;
-    window.location.href = redirectUrl;
   };
 
   render() {
-    let { email, password, credentialError, emailError } = this.state;
+    let { submitted } = this.state;
+
+    let formSection = (
+      <div>
+        <InputWrapper>
+          <StatusText>A verification email will be sent to</StatusText>
+          <Email>{this.context.user?.email}</Email>
+        </InputWrapper>
+        <StatusText>
+          Proceed below to verify your email and finish setting up your profile
+        </StatusText>
+        <Button onClick={this.handleSendEmail}>Send Verification Email</Button>
+      </div>
+    );
+
+    if (submitted) {
+      formSection = (
+        <>
+          <Buffer />
+          <StatusText lessPadding={true}>
+            A verification email was sent to{" "}
+            <White>{this.context.user?.email}</White>
+          </StatusText>
+          <StatusText lessPadding={true}>
+            Check your inbox for a verification email. Don't forget to check
+            your spam folder
+          </StatusText>
+          <StatusText lessPadding={true}>
+            Need help?
+            <Link href="mailto:contact@getporter.dev">Contact us</Link>
+          </StatusText>
+        </>
+      );
+    }
 
     return (
       <StyledLogin>
@@ -116,66 +74,69 @@ export default class Login extends Component<PropsType, StateType> {
           </OverflowWrapper>
           <FormWrapper>
             <Logo src={logo} />
-            <Prompt>Log in to Porter</Prompt>
-            <OAuthButton onClick={this.githubRedirect}>
-              <IconWrapper>
-                <Icon src={github} />
-                Log in with GitHub
-              </IconWrapper>
-            </OAuthButton>
-            <OrWrapper>
-              <Line />
-              <Or>or</Or>
-            </OrWrapper>
+            <Prompt>Verify Your Email</Prompt>
             <DarkMatter />
-            <InputWrapper>
-              <Input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  this.setState({
-                    email: e.target.value,
-                    emailError: false,
-                    credentialError: false,
-                  })
-                }
-                valid={!credentialError && !emailError}
-              />
-              {this.renderEmailError()}
-            </InputWrapper>
-            <InputWrapper>
-              <Input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  this.setState({
-                    password: e.target.value,
-                    credentialError: false,
-                  })
-                }
-                valid={!credentialError}
-              />
-              {this.renderCredentialError()}
-            </InputWrapper>
-            <Button onClick={this.handleLogin}>Continue</Button>
-
+            {formSection}
             <Helper>
-              Don't have an account?
-              <Link href="/register">Sign up</Link>
+              Want to use a different email?
+              <Link onClick={this.props.handleLogout}>Log out</Link>
             </Helper>
           </FormWrapper>
         </LoginPanel>
+
+        <Footer>
+          © 2021 Porter Technologies Inc. •
+          <Link
+            href="https://docs.getporter.dev/docs/terms-of-service"
+            target="_blank"
+          >
+            Terms & Privacy
+          </Link>
+        </Footer>
       </StyledLogin>
     );
   }
 }
 
-Login.contextType = Context;
+VerifyEmail.contextType = Context;
+
+const Buffer = styled.div`
+  width: 100%;
+  height: 20px;
+`;
+
+const White = styled.div`
+  color: white;
+`;
+
+const Email = styled.div`
+  background: #ffffff11;
+  border: 1px solid #ffffff44;
+  border-radius: 3px;
+  font-size: 14px;
+  color: #aaaabb;
+  height: 30px;
+  margin: 0 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const Footer = styled.div`
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  margin-bottom: 30px;
+  width: 100vw;
+  text-align: center;
+  color: #aaaabb;
+  font-size: 13px;
+  padding-right: 8px;
+  font: Work Sans, sans-serif;
+`;
 
 const DarkMatter = styled.div`
-  margin-top: -10px;
+  margin-top: -20px;
 `;
 
 const Or = styled.div`
@@ -229,6 +190,7 @@ const OAuthButton = styled.div`
 const Link = styled.a`
   margin-left: 5px;
   color: #819bfd;
+  cursor: pointer;
 `;
 
 const Helper = styled.div`
@@ -295,7 +257,7 @@ const Button = styled.button`
   align-items: center;
   font-family: "Work Sans", sans-serif;
   cursor: pointer;
-  margin-top: 9px;
+  margin: 9px auto;
   border-radius: 2px;
   border: 0;
   background: #819bfd;
@@ -332,8 +294,17 @@ const Prompt = styled.div`
 const Logo = styled.img`
   width: 140px;
   margin-top: 50px;
-  margin-bottom: 45px;
+  margin-bottom: 60px;
   user-select: none;
+`;
+
+const StatusText = styled.div<{ lessPadding?: boolean }>`
+  padding: ${(props) => (props.lessPadding ? "10px" : "18px")} 40px;
+  font-family: "Work Sans", sans-serif;
+  font-size: 14px;
+  line-height: 160%;
+  color: #aaaabb;
+  text-align: center;
 `;
 
 const FormWrapper = styled.div`

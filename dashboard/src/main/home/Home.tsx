@@ -1,8 +1,6 @@
 import React, { Component } from "react";
 import { RouteComponentProps, withRouter } from "react-router";
-import posthog from "posthog-js";
 import styled from "styled-components";
-import * as FullStory from "@fullstory/browser";
 
 import api from "shared/api";
 import { Context } from "shared/Context";
@@ -125,38 +123,40 @@ class Home extends Component<PropsType, StateType> {
       .catch(console.log);
   };
 
-  provisionDOCR = (integrationId: number, tier: string, callback?: any) => {
+  provisionDOCR = async (
+    integrationId: number,
+    tier: string,
+    callback?: any
+  ) => {
     console.log("Provisioning DOCR...");
-    return api
-      .createDOCR(
-        "<token>",
-        {
-          do_integration_id: integrationId,
-          docr_name: this.props.currentProject.name,
-          docr_subscription_tier: tier,
-        },
-        {
-          project_id: this.props.currentProject.id,
-        }
-      )
-      .then(() => callback());
+    await api.createDOCR(
+      "<token>",
+      {
+        do_integration_id: integrationId,
+        docr_name: this.props.currentProject.name,
+        docr_subscription_tier: tier,
+      },
+      {
+        project_id: this.props.currentProject.id,
+      }
+    );
+    return callback();
   };
 
-  provisionDOKS = (integrationId: number, region: string) => {
+  provisionDOKS = async (integrationId: number, region: string) => {
     console.log("Provisioning DOKS...");
-    return api
-      .createDOKS(
-        "<token>",
-        {
-          do_integration_id: integrationId,
-          doks_name: this.props.currentProject.name,
-          do_region: region,
-        },
-        {
-          project_id: this.props.currentProject.id,
-        }
-      )
-      .then(() => this.props.history.push("dashboard?tab=provisioner"));
+    await api.createDOKS(
+      "<token>",
+      {
+        do_integration_id: integrationId,
+        doks_name: this.props.currentProject.name,
+        do_region: region,
+      },
+      {
+        project_id: this.props.currentProject.id,
+      }
+    );
+    return this.props.history.push("dashboard?tab=provisioner");
   };
 
   checkDO = () => {
@@ -197,9 +197,6 @@ class Home extends Component<PropsType, StateType> {
   };
 
   componentDidMount() {
-    let { user } = this.context;
-    FullStory.identify(user.email);
-
     // Handle redirect from DO
     let queryString = window.location.search;
     let urlParams = new URLSearchParams(queryString);
@@ -217,19 +214,8 @@ class Home extends Component<PropsType, StateType> {
       this.checkDO();
     }
 
-    // initialize posthog on non-localhosts. Gracefully fail when env vars are not set.
     this.setState({ ghRedirect: urlParams.get("gh_oauth") !== null });
     urlParams.delete("gh_oauth");
-
-    window.location.href.indexOf("localhost") === -1 &&
-      posthog.init(process.env.POSTHOG_API_KEY || "placeholder", {
-        api_host: process.env.POSTHOG_HOST || "placeholder",
-        loaded: function (posthog: any) {
-          posthog.identify(user.userId);
-          posthog.people.set({ email: user.email });
-        },
-      });
-
     this.getProjects(defaultProjectId);
   }
 
